@@ -80,4 +80,9 @@ export const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
   },
+  overlayContainerFlexCenter: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
+  }
 });

@@ -42,6 +42,8 @@ interface CopilotContextType {
   isFirstStep: boolean;
   isLastStep: boolean;
   currentStepNumber: number;
+  hideSkip?: boolean;
+  hidePrevious?: boolean;
 }
 
 /*
@@ -83,6 +85,8 @@ export const CopilotProvider = ({
     async (step: Step) => {
       const size = await step?.measure();
 
+      console.log("Got size!");
+
       if (!size) {
         return;
       }
@@ -109,6 +113,7 @@ export const CopilotProvider = ({
             nodeHandle,
             (_x, y, _w, h) => {
               const yOffset = y > 0 ? y - h / 2 : 0;
+              console.log(`yOffset=${yOffset}`);
               scrollView.scrollTo({ y: yOffset, animated: false });
             }
           );
@@ -149,6 +154,7 @@ export const CopilotProvider = ({
         copilotEvents.emit("start");
         await setCurrentStep(currentStep);
         await moveModalToStep(currentStep);
+        console.log("--- setVisibility(true)!");
         await setVisibility(true);
         startTries.current = 0;
       }
@@ -220,10 +226,7 @@ export const CopilotProvider = ({
   return (
     <CopilotContext.Provider value={value}>
       <>
-        <CopilotModal
-          ref={modal}
-          {...rest}
-        />
+        <CopilotModal ref={modal} {...rest} />
         {children}
       </>
     </CopilotContext.Provider>

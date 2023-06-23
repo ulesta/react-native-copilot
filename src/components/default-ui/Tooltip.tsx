@@ -8,7 +8,7 @@ import { styles } from "../style";
 import type { TooltipProps } from "../../types";
 import { useCopilot } from "../../contexts/CopilotProvider";
 
-export const Tooltip = ({ labels }: TooltipProps) => {
+export const Tooltip = ({ CustomTooltip, labels }: TooltipProps) => {
   const { goToNext, goToPrev, stop, currentStep, isFirstStep, isLastStep } =
     useCopilot();
 
@@ -23,7 +23,17 @@ export const Tooltip = ({ labels }: TooltipProps) => {
     void goToPrev();
   };
 
-  return (
+  return CustomTooltip ? (
+    <CustomTooltip
+      currentStep={currentStep?.order as number}
+      isFirstStep={isFirstStep}
+      isLastStep={isLastStep}
+      handleStop={handleStop}
+      handleSkip={handleStop}
+      handlePrev={handlePrev}
+      handleNext={handleNext}
+    />
+  ) : (
     <View>
       <View style={styles.tooltipContainer}>
         <Text testID="stepDescription" style={styles.tooltipText}>

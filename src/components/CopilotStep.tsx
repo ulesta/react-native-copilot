@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { type NativeMethods } from "react-native";
+import { View, type NativeMethods } from "react-native";
 
 import { useCopilot } from "../contexts/CopilotProvider";
 
 interface Props {
   name: string;
-  order: number;
+  order: number | number[];
   text: string;
-  children: React.ReactElement<any>;
+  children?: React.ReactElement<any>;
   active?: boolean;
 }
 
@@ -20,6 +20,7 @@ export const CopilotStep = ({
 }: Props) => {
   const registeredName = useRef<string | null>(null);
   const { registerStep, unregisterStep } = useCopilot();
+
   const wrapperRef = React.useRef<NativeMethods | null>(null);
 
   const measure = async () => {
@@ -31,6 +32,15 @@ export const CopilotStep = ({
     }>((resolve) => {
       const measure = () => {
         // Wait until the wrapper element appears
+        if (!children) {
+          resolve({
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+          });
+        }
+
         if (wrapperRef.current != null && "measure" in wrapperRef.current) {
           wrapperRef.current.measure((_ox, _oy, width, height, x, y) => {
             resolve({
@@ -54,14 +64,29 @@ export const CopilotStep = ({
       if (registeredName.current && registeredName.current !== name) {
         unregisterStep(registeredName.current);
       }
-      registerStep({
-        name,
-        text,
-        order,
-        measure,
-        wrapperRef,
-        visible: true,
-      });
+
+      if (order instanceof Array) {
+        order.forEach((order) => {
+          registerStep({
+            name: `name-${order}`,
+            text,
+            order,
+            measure,
+            wrapperRef,
+            visible: true,
+          });
+        });
+      } else {
+        registerStep({
+          name,
+          text,
+          order,
+          measure,
+          wrapperRef,
+          visible: true,
+        });
+      }
+
       registeredName.current = name;
     }
   }, [name, order, text, registerStep, unregisterStep, active]);
@@ -84,5 +109,7 @@ export const CopilotStep = ({
     []
   );
 
-  return React.cloneElement(children, { copilot: copilotProps });
+  return children
+    ? React.cloneElement(children, { copilot: copilotProps })
+    : React.cloneElement(<View />, { copilot: copilotProps });
 };

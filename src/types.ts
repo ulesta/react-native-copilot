@@ -9,11 +9,13 @@ export type WalktroughedComponent = NativeMethods & React.ComponentType<any>;
 
 export interface Step {
   name: string;
-  order: number;
+  order: number | number[];
   visible: boolean;
   wrapperRef: React.RefObject<NativeMethods>;
   measure: () => Promise<LayoutRectangle>;
+  titleText?: string;
   text: string;
+  buttonText?: string;
 }
 
 export interface CopilotContext {
@@ -44,6 +46,7 @@ export type Labels = Partial<
 
 export interface TooltipProps {
   labels: Labels;
+  CustomTooltip?: React.ComponentType<CustomTooltipProps>;
 }
 
 export interface MaskProps {
@@ -63,6 +66,16 @@ export interface MaskProps {
   currentStep: Step;
 }
 
+export interface CustomTooltipProps {
+  currentStep?: number;
+  isFirstStep: boolean;
+  isLastStep: boolean;
+  handleStop?: () => void;
+  handleSkip?: () => void;
+  handlePrev?: () => void;
+  handleNext?: () => void;
+}
+
 export interface CopilotOptions {
   easing?: ((value: number) => number) | undefined;
   overlay?: "svg" | "view";
@@ -80,4 +93,5 @@ export interface CopilotOptions {
   margin?: number
   stopOnOutsideClick?: boolean;
   backdropColor?: string;
+  CustomTooltip?: React.ComponentType<CustomTooltipProps>;
 }

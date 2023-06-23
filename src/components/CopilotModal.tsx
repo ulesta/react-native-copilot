@@ -17,6 +17,7 @@ import {
   type LayoutChangeEvent,
   type LayoutRectangle,
   type ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import { useCopilot } from "../contexts/CopilotProvider";
 import type { CopilotOptions } from "../types";
@@ -34,11 +35,11 @@ type Props = CopilotOptions;
 
 const noop = () => {};
 
-const makeDefaultLayout = (): LayoutRectangle => ({
+const makeDefaultLayout = (width: number, height: number): LayoutRectangle => ({
   x: 0,
   y: 0,
-  width: 0,
-  height: 0,
+  width,
+  height,
 });
 
 export interface CopilotModalHandle {
@@ -69,7 +70,8 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
       stopOnOutsideClick = false,
       arrowColor = "#fff",
       arrowSize = ARROW_SIZE,
-      margin = MARGIN
+      margin = MARGIN,
+      CustomTooltip,
     },
     ref
   ) {
@@ -80,7 +82,10 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
       top: new Animated.Value(0),
       stepNumberLeft: new Animated.Value(0),
     });
-    const layoutRef = useRef(makeDefaultLayout());
+    const windowDimensions = useWindowDimensions();
+    const layoutRef = useRef(
+      makeDefaultLayout(windowDimensions.width, windowDimensions.height)
+    );
     const [layout, setLayout] = useState<LayoutRectangle | undefined>(
       undefined
     );
@@ -91,6 +96,7 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
 
     useEffect(() => {
       if (visible) {
+        console.log("❤️ container is visible");
         setContainerVisible(true);
       }
     }, [visible]);
@@ -124,6 +130,10 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
     const _animateMove = useCallback(
       async (rect: LayoutRectangle) => {
         const newMeasuredLayout = await measure();
+
+        console.log("✨");
+        console.log(newMeasuredLayout);
+
         if (!androidStatusBarVisible && Platform.OS === "android") {
           rect.y -= StatusBar.currentHeight ?? 0;
         }
@@ -155,36 +165,41 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
         const tooltip: ViewStyle = {};
         const arrow: ViewStyle = {};
 
-        if (verticalPosition === "bottom") {
-          tooltip.top = rect.y + rect.height + margin;
-          arrow.borderBottomColor = arrowColor;
-          arrow.top = tooltip.top - arrowSize * 2;
-        } else {
-          tooltip.bottom = newMeasuredLayout.height - (rect.y - margin);
-          arrow.borderTopColor = arrowColor;
-          arrow.bottom = tooltip.bottom - arrowSize * 2;
+        if (rect.height > 4 && rect.width > 4) {
+          if (verticalPosition === "bottom") {
+            tooltip.top = rect.y + rect.height + margin;
+            arrow.borderBottomColor = arrowColor;
+            arrow.top = tooltip.top - arrowSize * 2;
+          } else {
+            tooltip.bottom = newMeasuredLayout.height - (rect.y - margin);
+            arrow.borderTopColor = arrowColor;
+            arrow.bottom = tooltip.bottom - arrowSize * 2;
+          }
+
+          if (horizontalPosition === "left") {
+            tooltip.right = Math.max(
+              newMeasuredLayout.width - (rect.x + rect.width),
+              0
+            );
+            tooltip.right =
+              tooltip.right === 0 ? tooltip.right + margin : tooltip.right;
+            tooltip.maxWidth = newMeasuredLayout.width - tooltip.right - margin;
+            arrow.right = tooltip.right + margin;
+          } else {
+            tooltip.left = Math.max(rect.x, 0);
+            tooltip.left =
+              tooltip.left === 0 ? tooltip.left + margin : tooltip.left;
+            tooltip.maxWidth = newMeasuredLayout.width - tooltip.left - margin;
+            arrow.left = tooltip.left + margin;
+          }
         }
 
-        if (horizontalPosition === "left") {
-          tooltip.right = Math.max(
-            newMeasuredLayout.width - (rect.x + rect.width),
-            0
-          );
-          tooltip.right =
-            tooltip.right === 0 ? tooltip.right + margin : tooltip.right;
-          tooltip.maxWidth = newMeasuredLayout.width - tooltip.right - margin;
-          arrow.right = tooltip.right + margin;
-        } else {
-          tooltip.left = Math.max(rect.x, 0);
-          tooltip.left =
-            tooltip.left === 0 ? tooltip.left + margin : tooltip.left;
-          tooltip.maxWidth = newMeasuredLayout.width - tooltip.left - margin;
-          arrow.left = tooltip.left + margin;
-        }
+        sanitize(arrow);
+        sanitize(tooltip);
+        sanitize(rect);
 
-        sanitize(arrow)
-        sanitize(tooltip)
-        sanitize(rect)
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        console.log(`tooltip.top=${tooltip.top}`);
 
         const animate = [
           ["top", rect.y],
@@ -212,8 +227,8 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
         setArrowStyles(arrow);
         setLayout(newMeasuredLayout);
         setMaskRect({
-          width: rect.width,
-          height: rect.height,
+          width: rect.width > 4 ? rect.width : 0,
+          height: rect.height > 4 ? rect.height : 0,
           x: Math.floor(Math.max(rect.x, 0)),
           y: Math.floor(Math.max(rect.y, 0)),
         });
@@ -281,6 +296,13 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
       return null;
     }
 
+    const overlayContainerStyle =
+      maskRect?.height && maskRect.width
+        ? styles.container
+        : { ...styles.container, ...styles.overlayContainerFlexCenter };
+
+    console.log(overlayContainerStyle);
+
     return (
       <Modal
         animationType="none"
@@ -289,7 +311,7 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
         transparent
         supportedOrientations={["portrait", "landscape"]}
       >
-        <View style={styles.container} onLayout={handleLayoutChange}>
+        <View style={overlayContainerStyle} onLayout={handleLayoutChange}>
           {contentVisible && renderMask()}
           {contentVisible && renderTooltip()}
         </View>
@@ -305,8 +327,8 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
             require("./ViewMask").ViewMask;
 
       const size = maskRect && {
-        x: maskRect.width,
-        y: maskRect.height,
+        x: maskRect.width <= 4 ? 0 : maskRect.width,
+        y: maskRect.height <= 4 ? 0 : maskRect.height,
       };
 
       const position = maskRect;
@@ -354,7 +376,7 @@ export const CopilotModal = forwardRef<CopilotModalHandle, Props>(
             key="tooltip"
             style={[styles.tooltip, tooltipStyles, tooltipStyle]}
           >
-            <TooltipComponent labels={labels} />
+            <TooltipComponent CustomTooltip={CustomTooltip} labels={labels} />
           </Animated.View>
         </>
       );
@@ -382,4 +404,4 @@ const removeNan = (obj: Record<string, any>) => {
 const sanitize = (obj: Record<any, any>) => {
   floorify(obj);
   removeNan(obj);
-}
+};
